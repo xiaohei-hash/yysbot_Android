@@ -1,0 +1,46 @@
+# Debug screenshots - too large, kept locally only
+debug_screenshots/
+
+# Python bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyo
+
+# Virtual environment
+.venv/
+venv/
+
+# IDE
+.idea/
+.vscode/
+
+# Build
+build/
+dist/
+*.spec
+
+# ZIP archives
+*.zip
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Other scripts (keep only fast3.1.py)
+bot.py
+bot_packed.py
+fast1.0.py
+fast1.1.py
+fast2.0.py
+fast2.1.py
+fast3.0.py
+slow1.0.py
+slow1.1.py
+slow2.0.py
+
+# Blockchain data
+blockchain.dat
+
+# Debug ROI images
+debug_roi_*.png
