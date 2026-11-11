@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">YysBot</string>
+    <string name="accessibility_service_name">YysBot 自动化服务</string>
+    <string name="accessibility_service_desc">提供全局点击、滑动能力，用于游戏自动化脚本。</string>
+
+    <string name="template_dir_label">模板图片目录</string>
+    <string name="select_template_dir">选择 templates 文件夹</string>
+    <string name="settings_label">运行参数</string>
+    <string name="loop_times_hint">总循环次数（默认 1234）</string>
+    <string name="jj_interval_hint">每多少轮插入结界突破（默认 9，0＝不插入）</string>
+    <string name="qw_times_hint">结界第 9 关 QW 释放轮数</string>
+    <string name="game_package_hint">游戏包名（启动后自动切回游戏）</string>
+    <string name="start_script">启动脚本（后台运行）</string>
+    <string name="status_ready">就绪：请先选择模板目录，并开启无障碍服务</string>
+    <string name="manage_templates">🛠 管理模板（替换图片、固定坐标、阈值调整）</string>
+
+    <string name="log_window_title">YysBot 运行日志</string>
+    <string name="clear">清空</string>
+    <string name="fold">收起</string>
+    <string name="unfold">展开</string>
+    <string name="stop">停止</string>
+    <string name="exit">关闭</string>
+</resources>

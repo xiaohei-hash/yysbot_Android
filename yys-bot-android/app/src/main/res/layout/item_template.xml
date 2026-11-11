@@ -1,0 +1,136 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.cardview.widget.CardView
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_margin="4dp"
+    app:cardCornerRadius="8dp"
+    app:cardElevation="2dp"
+    app:cardUseCompatPadding="true">
+
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:padding="8dp">
+
+        <!-- 模板预览图 -->
+        <ImageView
+            android:id="@+id/ivPreview"
+            android:layout_width="0dp"
+            android:layout_height="80dp"
+            android:scaleType="centerCrop"
+            android:background="#f0f0f0"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent" />
+
+        <!-- 内置标签 -->
+        <TextView
+            android:id="@+id/tvBuiltInBadge"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:layout_marginStart="4dp"
+            android:paddingHorizontal="6dp"
+            android:paddingVertical="2dp"
+            android:background="@drawable/bg_badge_builtin"
+            android:text="内置"
+            android:textSize="10sp"
+            android:textColor="#fff"
+            android:visibility="gone"
+            app:layout_constraintTop_toTopOf="@id/ivPreview"
+            app:layout_constraintStart_toStartOf="@id/ivPreview" />
+
+        <!-- 固定坐标标签 -->
+        <ImageView
+            android:id="@+id/ivFixedPos"
+            android:layout_width="16dp"
+            android:layout_height="16dp"
+            android:layout_marginTop="4dp"
+            android:layout_marginEnd="4dp"
+            android:src="@android:drawable/ic_menu_mylocation"
+            android:tint="#4CAF50"
+            android:visibility="gone"
+            app:layout_constraintTop_toTopOf="@id/ivPreview"
+            app:layout_constraintEnd_toEndOf="@id/ivPreview" />
+
+        <!-- 禁用遮罩 -->
+        <View
+            android:id="@+id/vDisabledOverlay"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="#80000000"
+            android:visibility="gone"
+            app:layout_constraintTop_toTopOf="@id/ivPreview"
+            app:layout_constraintBottom_toBottomOf="@id/ivPreview"
+            app:layout_constraintStart_toStartOf="@id/ivPreview"
+            app:layout_constraintEnd_toEndOf="@id/ivPreview" />
+
+        <TextView
+            android:id="@+id/tvDisabledLabel"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="已禁用"
+            android:textColor="#fff"
+            android:textSize="12sp"
+            android:textStyle="bold"
+            android:visibility="gone"
+            app:layout_constraintTop_toTopOf="@id/ivPreview"
+            app:layout_constraintBottom_toBottomOf="@id/ivPreview"
+            app:layout_constraintStart_toStartOf="@id/ivPreview"
+            app:layout_constraintEnd_toEndOf="@id/ivPreview" />
+
+        <!-- 模板名称 -->
+        <TextView
+            android:id="@+id/tvName"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:layout_marginHorizontal="4dp"
+            android:maxLines="1"
+            android:ellipsize="end"
+            android:textSize="13sp"
+            android:textStyle="bold"
+            android:gravity="center"
+            app:layout_constraintTop_toBottomOf="@id/ivPreview"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent" />
+
+        <!-- 置信度/坐标信息 -->
+        <TextView
+            android:id="@+id/tvDetail"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
+            android:layout_marginHorizontal="4dp"
+            android:layout_marginBottom="4dp"
+            android:maxLines="1"
+            android:ellipsize="end"
+            android:textSize="11sp"
+            android:textColor="#666"
+            android:gravity="center"
+            app:layout_constraintTop_toBottomOf="@id/tvName"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent" />
+
+        <!-- 模式标签 -->
+        <TextView
+            android:id="@+id/tvMode"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
+            android:layout_marginHorizontal="4dp"
+            android:layout_marginBottom="4dp"
+            android:maxLines="1"
+            android:ellipsize="end"
+            android:textSize="10sp"
+            android:textColor="#999"
+            android:gravity="center"
+            app:layout_constraintTop_toBottomOf="@id/tvDetail"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintBottom_toBottomOf="parent" />
+
+    </androidx.constraintlayout.widget.ConstraintLayout>
+</androidx.cardview.widget.CardView>

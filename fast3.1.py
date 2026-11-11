@@ -9,7 +9,7 @@ Onmyoji 模拟器自动脚本 - fast3.1 安全修复版
    - 遍历图库中所有模板与当前桌面截图逐一比对
    - 确定当前游戏所处位置（BOSS/战斗/奖励/返回等）
    - 自动执行对应操作延续流程，而非直接退出
-5. 【fast3.0新增】debug_screenshots 10次自动关机保护
+5. 【fast3.0新增】debug_screenshots 10次自动关机保护1
 6. 【fast3.0新增】结界突破断线自动重连：
    - 每次查找前检测 disonline.png 断线提示
    - 自动点击 i_sure.png 确认重连
@@ -24,12 +24,14 @@ Onmyoji 模拟器自动脚本 - fast3.1 安全修复版
 import cv2
 import numpy as np
 import pyautogui
+pyautogui.FAILSAFE = False  # 脚本自带角落救援/clamp逻辑，关闭fail-safe防止拖拽中碰鼠标导致崩溃
 import pygetwindow as gw
 import os
 import random
 import time
 import sys
 import datetime
+import math
 import threading
 import queue
 from collections import deque
@@ -46,6 +48,9 @@ CFG_TIMEOUT = 90  # 操作超时时间(秒)
 CFG_XSFY_COOLDOWN = 3  # 协战检测冷却时间(秒)
 CFG_END_WAIT = 0.5  # 点击end前的强制等待时间(秒)
 CFG_MAX_JJ_RETRY = 5  # 结界突破断线最大重试次数，超过则退出结界恢复K28
+AUTO_INTERVAL = 1.0  # 连点器基准间隔(秒)
+AUTO_FLUCT = 0.5  # 连点器间隔波动幅度(秒)
+CFG_QW_TIMES = 8  # 结界突破第9关释放qw的轮数（k28+tp启动时询问）
 
 # ---------- 全局变量 ----------
 _log_queue = queue.Queue()
@@ -75,8 +80,15 @@ def _ensure_mouse_safe():
         ]
         for x1, x2, y1, y2 in corner_ranges:
             if x1 <= x <= x2 and y1 <= y <= y2:
-                # 鼠标在角落，移动到屏幕中央
-                pyautogui.moveTo(sw // 2, sh // 2)
+                # 鼠标在角落，移动到屏幕中央。
+                # 注意：救援moveTo自身也会过fail-safe检查（此时鼠标仍在角落必炸），
+                # 必须临时关闭FAILSAFE再移动
+                old = pyautogui.FAILSAFE
+                pyautogui.FAILSAFE = False
+                try:
+                    pyautogui.moveTo(sw // 2, sh // 2)
+                finally:
+                    pyautogui.FAILSAFE = old
                 return
     except Exception:
         pass
@@ -828,13 +840,48 @@ def do_jj_break(bot: ImageBot, emu: EmulatorWindow):
 
         # 进入结界
         if not bot.find("i_jj"):
-            log("未找到 i_jj，尝试返回", False)
-            bot.click("fanhui2", wait=1)
-            if _check_disonline():
-                continue
-            if not bot.find("i_jj"):
-                log("仍未找到 i_jj，放弃", False)
-                return
+            # fast3.1: home 与 dl 往复寻找（先 home 后 dl），直到出现 i_28 为止，
+            # 然后进行原本的流程（找 i_jj → 进入结界）
+            log("未找到 i_jj，home/dl 往复寻找直到出现 i_28", False)
+            jj_start = time.time()
+            round_cnt = 0
+            dl_pos = (1457, 461)  # fast3.1: dl 兜底位置（用户提供），搜不到时直接点这里；搜到后更新
+            while not _stop_flag.is_set():
+                round_cnt += 1
+                if round_cnt > 10:
+                    # fast5.1: 最多往复10轮，防止 i_28 永远匹配不到导致无限点击
+                    log("home/dl 往复超过10轮仍未出现 i_28，放弃本次结界突破", False)
+                    return
+                # fast3.1: home 只搜图点击，不做任何默认/记忆位置点击
+                if bot.click("home", wait=2):
+                    log(f"点击 home 图标(第{round_cnt}轮)", True)
+                # fast3.1: dl 优先搜图，搜不到且有记忆位置则点记忆位置
+                dl_found = bot.find("dl")
+                if dl_found:
+                    dl_pos = dl_found
+                    bot._click_direct(dl_found[0], dl_found[1], 2)
+                    log(f"点击 dl(第{round_cnt}轮)", True)
+                elif dl_pos:
+                    bot._click_direct(dl_pos[0], dl_pos[1], 2)
+                    log(f"未搜到 dl，点击记忆位置 (第{round_cnt}轮)", True)
+                else:
+                    log(f"搜索 dl 失败(第{round_cnt}轮)", False)
+                if bot.find("i_28"):
+                    log("已出现 i_28，回到原本流程", True)
+                    break
+                if bot.find("i_jj"):
+                    log("已出现 i_jj，回到原本流程", True)
+                    break
+                # fast3.1: 保底机制——每4轮没等到 i_28 就做一次图像状态恢复
+                if round_cnt % 4 == 0:
+                    log("home/dl 往复4轮未出现 i_28，触发图像状态恢复...", False)
+                    if not recover_state(bot, emu):
+                        log("状态恢复失败，放弃本次结界突破", False)
+                        return
+                # 未出现则带轮数日志重来，避免死循环检测误判
+                log(f"home/dl 往复一轮未出现 i_28（第{round_cnt}轮）", False)
+                # fast3.1: 给页面加载留时间，拉长轮间隔
+                time.sleep(5)
 
         if _check_disonline():
             continue
@@ -875,9 +922,9 @@ def do_jj_break(bot: ImageBot, emu: EmulatorWindow):
                     break
                 continue
 
-            # 第9关放技能
+            # 第9关放技能（次数由启动时询问决定）
             if i == 9:
-                for _ in range(8):
+                for _ in range(CFG_QW_TIMES):
                     if _stop_flag.is_set():
                         break
                     time.sleep(1)
@@ -1038,7 +1085,19 @@ def run_k28(bot: ImageBot, emu: EmulatorWindow, times: int, luns: int):
             if pos:
                 bot.click("i_tansuo", wait=1)
                 log("点击 i_tansuo", True)
-                break
+                # fast3.1: 校验是否真的进入章节（i_zhandou/i_boss 出现），
+                # 页面加载失败时不 break，留在本循环重新点击
+                enter_start = time.time()
+                entered = False
+                while time.time() - enter_start < 15 and not _stop_flag.is_set():
+                    if bot.find("i_zhandou") or bot.find("i_boss"):
+                        entered = True
+                        break
+                    time.sleep(1)
+                if entered:
+                    break
+                log("点击探索后未进入章节，重新点击", False)
+                continue
 
             if bot.click("i_28", wait=1):
                 log("点击 i_28", True)
@@ -1093,6 +1152,8 @@ def run_k28(bot: ImageBot, emu: EmulatorWindow, times: int, luns: int):
                     time.sleep(2)
                     if bot.find("i_zhandou"):
                         bot.click("i_zhandou", wait=1)
+                # fast3.1: 战斗打完重置找怪计时器，战斗时间不计入180s总超时
+                search_start = time.time()
             else:
                 # 滑动找怪 - fast3.1: 使用安全封装
                 cx, cy = emu.win.width // 2, emu.win.height // 2
@@ -1138,10 +1199,10 @@ def run_k28(bot: ImageBot, emu: EmulatorWindow, times: int, luns: int):
                     break
             if not clicked:
                 log(f"第{k}次纸人未找到", False)
-                if k >= 2:
+                if k >= 3:
                     break
 
-        # 宝箱 - 使用精确中央点击
+        # 宝箱 - 使用精确中央点击1
         if bot.click_center("i_treasure", wait=0.5, context="点击宝藏中央"):
             time.sleep(2)
             treasure_start = time.time()
@@ -1243,10 +1304,10 @@ def run_pata(bot: ImageBot, ticket_num: int, waste_time: int):
         if bot.find("easy-znq"):
             bot.click("easy-znq", wait=random.uniform(2, 4))
             # fast3.1: 使用安全 moveRel，替代原有的 pyautogui.moveRel
-            safe_move_rel(random.randint(-100, 50), random.randint(-400, -200))
+            safe_move_rel(random.randint(-50, 50), random.randint(-300, -200))
             log("点击 easy-znq", True)
             time.sleep(random.uniform(waste_time, waste_time + 2))
-            safe_move_rel(random.randint(-100, 30), random.randint(-600, -100))
+            safe_move_rel(random.randint(-50, 30), random.randint(-300, -100))
             # fast3.1: 使用安全点击
             safe_click()
             log("完成 easy-znq", True)
@@ -1255,6 +1316,40 @@ def run_pata(bot: ImageBot, ticket_num: int, waste_time: int):
             time.sleep(2)
             log("搜索 easy-znq", False)
             # fast3.1: 使用安全点击
+            safe_click()
+
+
+def run_tiaozhan(bot: ImageBot, ticket_num: int, waste_time: int):
+    """挑战模式 - 逻辑与周年庆（easy-znq）一致，使用 tiaozhan 图片"""
+    for i in range(ticket_num):
+        if _stop_flag.is_set():
+            log("用户停止", False)
+            return
+
+        if bot.find("tiaozhan"):
+            time.sleep(1)  # 搜到后等1秒再点
+            bot.click("tiaozhan", wait=random.uniform(2, 4))
+            log("点击 tiaozhan", True)
+            # 先等输入的刷取时间，再向上拖动，之后点击
+            time.sleep(random.uniform(waste_time, waste_time + 2))
+            safe_move_rel(random.randint(-20, 20), random.randint(-100, -60))
+            safe_click()
+            # 搜索并点击 i_end
+            end_start = time.time()
+            while time.time() - end_start < CFG_TIMEOUT:
+                if _stop_flag.is_set():
+                    break
+                if bot.find("i_end"):
+                    time.sleep(1)  # 搜到后等1秒再点
+                    bot.click("i_end", wait=1)
+                    log("点击 i_end(挑战)", True)
+                    break
+                time.sleep(1)
+            log("完成 tiaozhan", True)
+            time.sleep(random.uniform(1, 3))
+        else:
+            time.sleep(2)
+            log("搜索 tiaozhan", False)
             safe_click()
 
 
@@ -1282,11 +1377,59 @@ def run_yuhun(bot: ImageBot, yuhun_time: int):
             safe_click()
 
 
+# ========== fast3.1 新增：连点器模式 ==========
+def run_autoclicker():
+    """
+    连点器：
+    1. 用户移动鼠标到目标位置，点击左键确定中心点
+    2. 输入点击间隔和上下波动区间
+    3. 点击间隔按正弦规律在 [间隔-波动, 间隔+波动] 之间上下波动
+    4. 点击日志窗口的 Stop 或 Exit 停止
+    """
+    from pynput import mouse
+
+    log("请在3秒内将鼠标移动到目标位置并【左键单击】确定中心点...", True)
+    time.sleep(3)
+
+    click_event = threading.Event()
+    click_pos: List[int] = [0, 0]
+
+    def on_click(x, y, button, pressed):
+        if pressed and button == mouse.Button.left:
+            click_pos[0], click_pos[1] = x, y
+            click_event.set()
+            return False  # 停止监听
+
+    listener = mouse.Listener(on_click=on_click)
+    listener.start()
+    log("等待鼠标左键点击...", True)
+    if not click_event.wait(timeout=30):
+        listener.stop()
+        log("30秒内未检测到鼠标点击，连点器退出", False)
+        return
+    log(f"中心点已确定: ({click_pos[0]}, {click_pos[1]})", True)
+
+    # 间隔和波动区间（主线程弹窗已在 main 中收集）
+    log(f"开始连点：间隔约 {AUTO_INTERVAL}s ± {AUTO_FLUCT}s 正弦波动，点 Stop 停止", True)
+
+    phase = 0.0
+    cycle = max(AUTO_FLUCT * 20, 20)  # 波动周期(秒)：波动越大周期越长，最小20秒
+    while not _stop_flag.is_set():
+        # 正弦波动：间隔在 [interval-fluct, interval+fluct] 之间规律变化
+        cur_interval = AUTO_INTERVAL + AUTO_FLUCT * math.sin(2 * math.pi * phase / cycle)
+        phase = (phase + cur_interval) % cycle
+
+        pyautogui.click(click_pos[0], click_pos[1])
+        time.sleep(max(0.05, cur_interval))
+
+    log("连点器已停止", True)
+
+
 # ========== 弹窗（主线程） ==========
 def ask_choice() -> str:
     root = tk.Tk()
     root.withdraw()
-    choice = simpledialog.askstring("选择副本", "请输入数字：\n1. k28+tp\n2. tp*3\n3. 爬塔\n4. 御魂")
+    choice = simpledialog.askstring("选择副本", "请输入数字：\n1. k28+tp\n2. tp*3\n3. 爬塔\n4. 御魂\n5. 连点器\n6. 挑战")
     root.quit()
     root.destroy()
     return choice
@@ -1305,6 +1448,20 @@ def ask_int(prompt: str, default: int = 0) -> int:
             messagebox.showerror("输入错误", "请输入一个有效的整数")
 
 
+def ask_float(prompt: str, default: float = 0.0) -> float:
+    """弹窗输入浮点数"""
+    root = tk.Tk()
+    root.withdraw()
+    while True:
+        try:
+            value = simpledialog.askstring("输入", prompt)
+            root.quit()
+            root.destroy()
+            return float(value or str(default))
+        except ValueError:
+            messagebox.showerror("输入错误", "请输入一个有效的数字")
+
+
 # ========== 主入口 ==========
 def main():
     global _log_window
@@ -1320,9 +1477,16 @@ def main():
     choose = ask_choice()
     times = ask_int("循环次数：", 0) if choose == "1" else 0
     luns = ask_int("多少轮一次结界突破：", 15) if choose == "1" else 0
-    ticket_num = ask_int("刷取次数：", 1) if choose == "3" else 0
-    waste_time = ask_int("刷取时间(s)：", 60) if choose == "3" else 0
+    if choose == "1":
+        global CFG_QW_TIMES
+        CFG_QW_TIMES = ask_int("结界突破第9关释放qw轮数：", 8)
+    ticket_num = ask_int("刷取次数：", 1) if choose in ("3", "6") else 0
+    waste_time = ask_int("刷取时间(s)：", 60) if choose in ("3", "6") else 0
     yuhun_time = ask_int("刷取次数：", 1) if choose == "4" else 0
+    if choose == "5":
+        global AUTO_INTERVAL, AUTO_FLUCT
+        AUTO_INTERVAL = ask_float("点击间隔(秒)：", 1.0)
+        AUTO_FLUCT = ask_float("间隔上下波动幅度(秒)：", 0.5)
 
     # 3. 子线程跑业务
     def worker():
@@ -1339,6 +1503,10 @@ def main():
                 run_pata(bot, ticket_num, waste_time)
             elif choose == "4":
                 run_yuhun(bot, yuhun_time)
+            elif choose == "5":
+                run_autoclicker()
+            elif choose == "6":
+                run_tiaozhan(bot, ticket_num, waste_time)
             else:
                 _log_window.write("无效选择")
 

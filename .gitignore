@@ -27,7 +27,7 @@ dist/
 .DS_Store
 Thumbs.db
 
-# Other scripts (keep only fast3.1.py)
+# Other scripts (keep only fast3.2.py, fast4.1.py, fast5.1.py)
 bot.py
 bot_packed.py
 fast1.0.py
@@ -35,12 +35,26 @@ fast1.1.py
 fast2.0.py
 fast2.1.py
 fast3.0.py
+fast3.1.py
 slow1.0.py
 slow1.1.py
 slow2.0.py
+free_fast1.0.py
+autoclicker_exe.py
+autoclicker.spec
 
 # Blockchain data
 blockchain.dat
 
 # Debug ROI images
 debug_roi_*.png
+
+# Android build artifacts
+yys-bot-android/.gradle/
+yys-bot-android/app/build/
+yys-bot-android/YysBot-debug.apk
+yys-bot-android/gradle/wrapper/gradle-wrapper.jar
+
+# Extra directories
+apk/
+平安志/

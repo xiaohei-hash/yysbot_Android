@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/rootOverlay"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#66000000"
+    android:clickable="true"
+    android:focusable="true">
+
+    <!-- 框选预览矩形 -->
+    <View
+        android:id="@+id/vSelection"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:background="@drawable/bg_selection"
+        android:visibility="gone" />
+
+    <!-- 中心提示 -->
+    <TextView
+        android:id="@+id/tvHint"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:background="#CCFFFFFF"
+        android:padding="24dp"
+        android:textSize="16sp"
+        android:textColor="#000"
+        android:gravity="center"
+        android:lineSpacingMultiplier="1.5" />
+
+    <!-- 底部说明 -->
+    <TextView
+        android:id="@+id/tvFooter"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom"
+        android:background="#AA000000"
+        android:padding="12dp"
+        android:textSize="13sp"
+        android:textColor="#FFFFFF"
+        android:gravity="center"
+        android:text="轻点 = 记录单点坐标    ·    按住拖动 = 框选矩形范围" />
+
+</FrameLayout>
